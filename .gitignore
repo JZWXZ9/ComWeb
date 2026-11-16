@@ -5,7 +5,8 @@
 
 # Reproducible LaTeX build and review artifacts.
 notes/build/
-notes/**/.review_work/
+ElegantBook-master/
+.review_work/
 notes/*.aux
 notes/*.log
 notes/*.out
@@ -21,3 +22,4 @@ notes/*.fls
 notes/*.xdv
 notes/review/*-ppt-extract.txt
 notes/review/*-figures-preview.png
+temp/
