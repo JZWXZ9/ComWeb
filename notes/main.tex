@@ -1,0 +1,59 @@
+\documentclass[openany,lang=cn,newtx,11pt,scheme=chinese,color=blue,mode=fancy,bibtex]{elegantbook}
+
+\title{计算机网络知识点与例题解答}
+\subtitle{第1--7章 · 依据课程PPT整理}
+\author{}
+\date{2026年11月16日}
+\version{0.5}
+\cover{ch01-internet.png}
+
+\setcounter{tocdepth}{2}
+\setcounter{secnumdepth}{2}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{float}
+\graphicspath{{figure/source/}{notes/figure/source/}}
+\newcount\annotationcounter
+\makeatletter
+\newcommand{\annotationarea}{\@ifnextchar[{\annotationarea@optional}{\annotationarea@required}}
+\newcommand{\annotationarea@optional}[1][4]{\annotationarea@draw{#1}}
+\newcommand{\annotationarea@required}[1]{\annotationarea@draw{#1}}
+\newcommand{\annotationarea@draw}[1]{%
+  \par\smallskip
+  \noindent{\color{gray!65}\scriptsize 批注}\par
+  {\color{gray!45}%
+    \annotationcounter=#1\relax
+    \loop\ifnum\annotationcounter>0
+      \noindent\rule{\linewidth}{0.25pt}\par\vspace{0.6cm}%
+      \advance\annotationcounter by -1
+    \repeat
+  }%
+  \smallskip
+}
+\makeatother
+
+% ElegantBook 的章标题仍可能继承 book 的 openright 状态；本笔记使用单面阅读版式。
+\makeatletter\@openrightfalse\makeatother
+
+\begin{document}
+\raggedbottom
+\fancyhead[R]{\color{structurecolor}\cnormal\leftmark}
+\maketitle
+\frontmatter
+\tableofcontents
+\mainmatter
+
+\part{第1--7章知识点、例题与解答}
+\input{chapters/chapter01}
+\input{chapters/chapter02}
+\input{chapters/chapter03}
+\input{chapters/chapter04}
+\input{chapters/chapter05}
+\input{chapters/chapter06}
+\input{chapters/chapter07}
+
+\end{document}
+

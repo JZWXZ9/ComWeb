@@ -1,0 +1,23 @@
+# Reference PDFs (textbooks, exported lecture slides, and other source PDFs).
+# Keep the compiled course notes PDF.
+*.pdf
+!notes/main.pdf
+
+# Reproducible LaTeX build and review artifacts.
+notes/build/
+notes/**/.review_work/
+notes/*.aux
+notes/*.log
+notes/*.out
+notes/*.toc
+notes/*.run.xml
+notes/*.synctex.gz
+notes/*-blx.bib
+notes/*.bcf
+notes/*.bcf-*
+notes/*.blg
+notes/*.fdb_latexmk
+notes/*.fls
+notes/*.xdv
+notes/review/*-ppt-extract.txt
+notes/review/*-figures-preview.png
