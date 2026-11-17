@@ -541,16 +541,31 @@ IPv4 和 IPv6 网络会在一段时间内共存，下面介绍课件中的一种
 
 \section{IP相关协议}
 \subsection{ICMP、ping与traceroute}
+\begin{definition}{ICMP}
 \textbf{ICMP}（Internet控制报文协议）的报文装在IP数据报中，用于报告差错或网络探询，并不使IP传输自动可靠。例子有目的不可达、超时、重定向、回声请求和回声应答；课件所列源抑制是历史机制，不宜当成当前拥塞控制方案。
+\end{definition}
 
-\textbf{ping}发送回声请求，收到回声应答可测往返时间；无应答可能是丢包或过滤，并不必然说明主机不存在。\textbf{traceroute}逐次发送TTL为1、2、3等的探测报文：第一跳将TTL减至0并可能返回ICMP超时，第二次由第二跳返回，以此推测路径。课件示例采用UDP探测，目的主机可用端口不可达响应终止；不同实现也可能用其他探测报文，路由或过滤变化会使结果不完整。通常不会针对ICMP差错报文再生成ICMP差错，也不会对非首个分片生成ICMP差错。
+\begin{proposition}{ping 与 traceroute}
+\textbf{ping}发送回声请求，收到回声应答可测往返时间；无应答可能是丢包或过滤，并不必然说明主机不存在。\\
+\textbf{traceroute}逐次发送TTL为1、2、3等的探测报文：第一跳将TTL减至0并可能返回ICMP超时，第二次由第二跳返回，以此推测路径。课件示例采用UDP探测，目的主机可用端口不可达响应终止；不同实现也可能用其他探测报文，路由或过滤变化会使结果不完整。
+\end{proposition}
+\begin{proposition}{ICMP 差错报告的限制}
+通常不会针对ICMP差错报文再生成ICMP差错，也不会对非首个分片生成ICMP差错。
+\end{proposition}
 
+\begin{samepage}
 \begin{example}{课件的 UDP traceroute 是怎样看到各跳的？}
 发送方先发 TTL=1 的 UDP 探测报文，第一台路由器把 TTL 减到0并可能返回 ICMP 超时；再发送 TTL=2 的探测，第二跳可能返回超时；依此继续。当探测到达目的主机且所选 UDP 端口未开放时，目的主机可返回 ICMP 端口不可达，表示探测到终点。返回的 ICMP 报文本身也要装入新的 IP 数据报；若设备过滤或不响应，显示的星号不能单独证明该路由器不存在。来源：课件 PDF 第118--121页。
 \end{example}
+\end{samepage}
+\annotationarea[3]
 
 \subsection{DHCP：自动配置}
-\textbf{动态主机配置协议 DHCP}让新加入的主机获得地址、子网掩码、默认网关、DNS服务器及租期。典型初始流程称DORA：
+\begin{definition}{DHCP}
+\textbf{动态主机配置协议 DHCP}让新加入的主机获得地址、子网掩码、默认网关、DNS服务器及租期。
+\end{definition}
+\begin{proposition}{DHCP 初始配置：DORA}
+典型初始流程称DORA：
 \begin{enumerate}[nosep]
 \item 客户端广播 Discover 寻找服务器，尚无地址时源IP为 \texttt{0.0.0.0}；
 \item 服务器返回 Offer，提出可用地址及租期；
@@ -558,24 +573,36 @@ IPv4 和 IPv6 网络会在一段时间内共存，下面介绍课件中的一种
 \item 被选服务器返回 ACK 确认，客户端才使用配置；租期到期前可以续租。
 \end{enumerate}
 DHCP采用UDP，服务器端口67、客户端端口68。若服务器不在本广播域，可以通过DHCP中继转发请求；服务器响应不一定总是广播。默认网关是本子网上可转发到其他网络的路由器接口。
+\end{proposition}
 
 \begin{example}{课件 DHCP 四次交互}
 课件 PDF 第124页中，服务器为 \texttt{223.1.2.5}，提供地址 \texttt{223.1.2.4}，租期3600秒。客户端尚未获得地址时以 \texttt{0.0.0.0} 为源广播 Discover；服务器在 Offer 中提出地址与租期；客户端广播 Request 表明选择该配置；服务器发送 ACK 后，客户端按确认的租约使用地址。课件此例中的服务器响应采用广播，但实际 DHCP 场景并非所有响应都必须广播。Request 的广播也让其他提供地址的服务器知道客户端选择了哪一项。
 \end{example}
 \annotationarea[3]
 \subsection{NAT：多个内部主机共享外部地址}
-\textbf{网络地址转换 NAT}可将内部私有地址与公网地址对应；课件例子同时转换传输层端口，这种多对一形式也称NAPT。主机 \texttt{10.0.0.1:3345} 访问 \texttt{128.119.40.186:80} 时，网关将源改为 \texttt{138.76.29.7:5001}，记录映射；回复以 \texttt{138.76.29.7:5001} 为目的到达网关后，再改回 \texttt{10.0.0.1:3345}。端口帮助区分内部会话，转换还涉及相关校验和更新。
+\begin{definition}{NAT 与 NAPT}
+\textbf{网络地址转换 NAT}可将内部私有地址与公网地址对应；课件例子同时转换传输层端口，这种多对一形式也称NAPT。端口帮助区分内部会话，转换还涉及相关校验和更新。
+\end{definition}
+\begin{example}{课件例：NAT 往返转换}
+主机 \texttt{10.0.0.1:3345} 访问 \texttt{128.119.40.186:80} 时，网关将源改为 \texttt{138.76.29.7:5001}，记录映射；回复以 \texttt{138.76.29.7:5001} 为目的到达网关后，再改回 \texttt{10.0.0.1:3345}。
+\end{example}
 \begin{figure}[H]\centering\includegraphics[width=.88\textwidth]{ch04-nat.png}\caption{NAT往返转换：编号1--4依次是请求、改写外出、回复和改写进入，表中记录地址与端口对应。来源：Chapter4-网络层.pdf，PDF第130页（显示页130），局部截取。}\end{figure}
+\begin{proposition}{外部访问与 NAT 的边界}
 外部主动访问内网服务器时，若没有对应映射，网关通常无法知道转给谁；可配置端口映射、通过网关控制协议建立映射，或使用中继。NAT改变端到端寻址，不等同于完整防火墙或安全保证。
+\end{proposition}
 
 \begin{proposition}{把 NAT 图中的四个编号连起来}
 ① 内网主机发出请求：源为 \texttt{10.0.0.1:3345}，目的为 \texttt{128.119.40.186:80}。② NAT 将源改为 \texttt{138.76.29.7:5001} 并记录映射，目的不变。③ 服务器回复到 \texttt{138.76.29.7:5001}。④ NAT 查映射，将回复的目的改回 \texttt{10.0.0.1:3345} 并送回内网。这里端口属于 TCP 或 UDP 首部，冒号表示“地址加端口”，不是 IP 地址本身。
 \end{proposition}
 \annotationarea[3]
 \subsection{ARP与跨网段逐跳交付}
+\begin{definition}{ARP}
 \textbf{地址解析协议 ARP}在本地链路上把下一跳IPv4地址解析成链路层MAC地址。A需要向同一局域网中的B发报而缓存无记录时，广播询问“谁拥有B的IP”；B通常单播应答其MAC，A缓存映射并设置有效期。ARP广播限制在本地广播域，不跨路由器查找远端主机。
+\end{definition}
 
+\begin{proposition}{跨网段交付时的地址变化}
 若A与B不在同一子网，A查询到默认网关的IP，再用ARP解析\emph{网关接口}的MAC。第一跳帧的源MAC为A、目的MAC为网关；其中IP数据报源、目的仍为A、B。路由器去除旧帧、查表、解析下一跳并构造新帧；新帧中的MAC因链路而变，而普通转发中端到端IP不变，TTL递减。图中R左右接口各自连接一个网络，蓝色线表示对应链路，帧的目的MAC是本跳接收接口。
+\end{proposition}
 \begin{figure}[H]\centering\includegraphics[width=.88\textwidth]{ch04-hop-addresses.png}\caption{跨两个局域网交付：路由器向右转发时，数据报目的IP仍为B，输出帧目的MAC换成B的MAC。来源：Chapter4-网络层.pdf，PDF第145页（显示页145），局部截取。}\end{figure}
 \begin{example}{课件例：跨网时 IP 与 MAC 分别怎样变化？}
 \begin{sloppypar}
