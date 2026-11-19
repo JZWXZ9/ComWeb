@@ -706,17 +706,32 @@ A $\to$ 路由器 & \texttt{74-29-9C-E8-FF-55} & \texttt{E6-E9-00-17-BB-4B}\\
 \par\small\noindent 来源：第4章课件 PDF 阅读器第115--146页（显示页相同）；王道教材 PDF 第155--162页（印刷第144--151页）。ICMP 和 DHCP 的规范补充分别参见 \href{https://www.rfc-editor.org/rfc/rfc1812.html}{RFC 1812}、\href{https://www.rfc-editor.org/rfc/rfc6633.html}{RFC 6633} 和 \href{https://www.rfc-editor.org/rfc/rfc2131.html}{RFC 2131}。\normalsize
 
 \section{路由算法}
+本节讨论如何找到总费用最低的路径，再据此确定下一跳并生成路由表。这里的“距离”是一个宽泛的概念，具体可以定义成跳数、时延或拥塞程度等因素。
 \subsection{图、费用与路由分类}
 
 \begin{definition}{路由、转发与下一跳}
-\textbf{路由}决定到各目的网络应采用什么路径，路由算法根据拓扑、费用等信息计算路径。路径上接收本路由器分组的第一个相邻路由器称为\textbf{下一跳}。\textbf{转发}发生在分组到达时，本路由器根据目的地址查询转发表，决定当前应从哪个接口把分组送出（课件第148页）。
+\textbf{路由}决定到各目的网络应采用什么路径，路由算法根据拓扑、费用等信息计算路径。
+
+路径上接收本路由器分组的第一个相邻路由器称为\textbf{下一跳}。
+
+\textbf{转发}发生在分组到达时，本路由器根据目的地址查询转发表，决定当前应从哪个接口把分组送出（课件第148页）。
 \end{definition}
+
+把路由器看成结点，把它们之间的链路看成边，就可以在一张图上计算路径。
 
 \begin{definition}{网络的图抽象与最短路径}
-用图 $G=(N,E)$ 表示网络，$N$ 是路由器结点集合，$E$ 是链路集合。$c(x,y)$ 表示从 $x$ 到相邻结点 $y$ 的链路费用，无直连链路时记为 $\infty$。费用是路由算法用来比较路径的度量，可以统一取1，也可以根据带宽的倒数、拥塞程度等设定。若两个方向的费用分别给定，应使用实际行进方向的费用。
+用图 $G=(N,E)$ 表示网络，$N$ 是路由器结点集合，$E$ 是链路集合。
 
-一条路径 $x_1\to x_2\to\cdots\to x_p$ 的总费用为 $\sum_{i=1}^{p-1} c(x_i,x_{i+1})$。\textbf{最短路径}指总费用最小的路径。每段费用都为1时，总费用就是跳数。
+$c(x,y)$ 表示从 $x$ 到相邻结点 $y$ 的链路费用，无直连链路时记为 $\infty$。
+
+费用是路由算法用来比较路径的度量，可以统一取1，也可以根据带宽的倒数、拥塞程度等设定。若两个方向的费用分别给定，应使用实际行进方向的费用。
+
+一条路径 $x_1\to x_2\to\cdots\to x_p$ 的总费用为 $\sum_{i=1}^{p-1} c(x_i,x_{i+1})$。\textbf{最短路径}指总费用最小的路径。
 \end{definition}
+
+\begin{remark}
+每段费用都为1时，总费用就是跳数。
+\end{remark}
 
 \begin{example}{费用与跳数}
 从 $A$ 到 $C$ 可直连，也可经 $B$。设 $c(A,C)=7$、$c(A,B)=2$、$c(B,C)=1$。按费用应选哪条路径？下一跳是谁？
@@ -725,34 +740,41 @@ A $\to$ 路由器 & \texttt{74-29-9C-E8-FF-55} & \texttt{E6-E9-00-17-BB-4B}\\
 直连花费7，经 $B$ 花费 $2+1=3$，因此选 $A\to B\to C$，下一跳为 $B$。若把每段费用改为1，直连只需一跳，便会胜出。
 \end{solution}
 
+和 IP 配置类似，路由可以手工配置，也可以动态更新。讨论动态路由时，还可以按计算依赖的信息来区分。掌握完整拓扑的路由器可以运行 Dijkstra。只知道本地链路费用和邻居估计的路由器，可以把问题拆成“先到某个邻居，再由该邻居到目的地”，依据 Bellman--Ford 方程更新。
+
 \begin{proposition}{路由的两个分类角度}
 \begin{itemize}[nosep]
-  \item 按\textbf{计算所用的信息}分类。全局信息算法使用完整的拓扑和链路费用，典型为链路状态（Link State，LS）。分散信息算法以本地邻居、直连费用及邻居交换的信息为基础，典型为距离向量（Distance Vector，DV）。
+  \item 按\textbf{计算所用的信息}分类。全局信息算法使用完整的拓扑和链路费用，典型为链路状态路由算法（Link State，LS）。分散信息算法以本地邻居、直连费用及邻居交换的信息为基础，典型为距离向量路由算法（Distance Vector，DV）。
   \item 按\textbf{路由是否随网络状态更新}分类。静态路由由管理员配置，开销较小，通常靠人工调整。动态路由用协议交换信息，可定期更新或响应拓扑、费用变化，需要额外的通信和计算。静态路由的选择优先级由设备和配置决定。
 \end{itemize}
 \end{proposition}
-\begin{samepage}\annotationarea[3]\end{samepage}
+
+要让路由随网络变化而更新，需要解决两个问题，一是怎样计算路径，二是变化发生后怎样通知其他路由器。
 
 \subsection{链路状态与 Dijkstra 算法}
+链路状态算法需要掌握参与计算范围内的结点 $N$、链路 $E$ 及其费用 $c(x,y)$。当路由器加入或链路状态变化时，相关路由器发布本地链路状态，邻居继续转发新的通告，把信息送到这个范围内的其他路由器。这个过程叫作泛洪。
 \begin{definition}{链路状态与链路状态广播}
 本路由器的\textbf{链路状态}包括与哪些邻居相连、到这些邻居的链路费用。各路由器通过洪泛传播这类通告，收到新通告的路由器继续沿其他链路转发，从而使参与计算的路由器逐步获得同一份拓扑和费用信息。每台路由器以自己为源运行 Dijkstra，再将得到的第一跳写入自己的转发表。
 \end{definition}
 
 \begin{proposition}{Dijkstra 单源最短路径算法}
-给定一份固定的拓扑和\textbf{非负}链路费用，从源结点 $u$ 计算到所有可达结点的最短路径。$N'$ 是最短费用已确定的结点集合，$D(v)$ 是当前找到的从 $u$ 到 $v$ 的最小费用，$p(v)$ 是当前这条路径中 $v$ 的前驱结点。
+给定固定拓扑和\textbf{非负}链路费用，从 $u$ 计算到各可达结点的最短路径。$N'$ 是最短费用已确定的结点集合。$D(v)$ 是当前找到的从 $u$ 到 $v$ 的最小费用，$p(v)$ 是相应前驱。
 \begin{enumerate}[nosep]
   \item \textbf{初始化}。令 $N'=\{u\}$、$D(u)=0$。对 $u$ 的邻居设置 $D(v)=c(u,v)$、$p(v)=u$，其他结点的 $D(v)$ 为 $\infty$，前驱暂空。
   \item \textbf{确定一个结点}。从 $N'$ 外选取 $D(w)$ 最小的结点 $w$，将其加入 $N'$。当最小值为 $\infty$ 时，可结束计算，余下结点不可达。
   \item \textbf{尝试经 $w$ 改进其他路径}。对 $w$ 的每个尚未确定的邻居 $v$，比较旧值 $D(v)$ 与 $D(w)+c(w,v)$。若后者更小，就更新 $D(v)$ 并令 $p(v)=w$。继续执行上一步，直到可达结点都已确定。
 \end{enumerate}
-绕经其他待选结点的路径，离开 $N'$ 时的费用至少为 $D(w)$，再走只会加上非负费用，所以可以确定 $w$。沿前驱回溯，源点后的第一个结点就是下一跳。
+沿前驱回溯，源点后的第一个结点就是下一跳。
 \end{proposition}
+\begin{remark}
+  关键是每轮可以确定一个可达结点的最短费用。第一轮时，$N'$ 中只有源点 $u$，绕路至少要先走出一条费用不低于 $D(w)$ 的边。一般地，任取一条到 $w$ 的路径，设它第一次离开 $N'$ 时到达 $v$。走到 $v$ 的这段路径费用至少是 $D(v)$，而 $D(v)\ge D(w)$。后续边权非负，所以这条路径的总费用至少是 $D(w)$。算法已经找到一条费用为 $D(w)$ 的路径，因此可以确定 $w$。若源点已提前加入，至多再进行 $n-1$ 轮。
+\end{remark}
 
 \begin{example}{课件例1：按表更新费用和前驱}
 在下图的网络中，以 $u$ 为源依次确定各结点。求到 $z$ 的最小费用、完整路径和 $u$ 的下一跳。
 \end{example}
 \begin{figure}[H]
-  \centering\includegraphics[width=.9\textwidth]{ch04-dijkstra.png}
+  \centering\includegraphics[width=.87\textwidth]{ch04-dijkstra.png}
   \caption{Dijkstra 例1。左表每格是候选费用与前驱，红圈标出下一轮选择，右图边上的数字为费用。来源：Chapter4-网络层.pdf，PDF 阅读器第155页（显示页155），局部截取。}
 \end{figure}
 \begin{solution}
@@ -763,11 +785,11 @@ A $\to$ 路由器 & \texttt{74-29-9C-E8-FF-55} & \texttt{E6-E9-00-17-BB-4B}\\
   \item 选 $v$（6）。经 $v$ 把 $y$ 的费用从11改为 $6+4=10$，令 $p(y)=v$。
   \item 选 $y$（10）。经 $y$ 把 $z$ 的费用从14改为 $10+2=12$，令 $p(z)=y$，随后确定 $z$。
 \end{enumerate}
-确定顺序为 $u,w,x,v,y,z$。前驱回溯为 $z\leftarrow y\leftarrow v\leftarrow w\leftarrow u$，所以路径为 $u\to w\to v\to y\to z$，费用12，下一跳为 $w$。
+确定顺序为 $u,w,x,v,y,z$。沿前驱回溯可得路径 $u\to w\to v\to y\to z$，费用为12，下一跳是 $w$。
 \end{solution}
 
 \begin{example}{课件例2：由最短路径树得到转发表}
-以图中的链路费用为准，从 $u$ 计算最短路径树和转发表（课件第156--157页）。本图包含费用为5的边 $(u,w)$，第149、152页的边集合文字漏列了这一条边。
+以图中的链路费用为准，从 $u$ 计算最短路径树和转发表（课件第156--157页）。
 \end{example}
 \begin{figure}[H]
   \centering\includegraphics[width=.46\textwidth]{ch04-dijkstra-topology.png}
@@ -789,13 +811,14 @@ A $\to$ 路由器 & \texttt{74-29-9C-E8-FF-55} & \texttt{E6-E9-00-17-BB-4B}\\
 \end{center}
 例如，确定 $x$ 后，到 $w$ 的候选费用为 $1+3=4$。确定 $y$ 后再改为 $2+1=3$，同轮得到 $D(z)=2+2=4$。最短路径树的边为 $(u,v),(u,x),(x,y),(y,w),(y,z)$。从 $u$ 看，去 $v$ 的输出链路是 $(u,v)$，去 $x,y,w,z$ 的输出链路都是 $(u,x)$。
 \end{solution}
-\begin{samepage}\annotationarea[4]\end{samepage}
 
 \begin{proposition}{单次计算的复杂度}
 设 $n=|N|$、$m=|E|$。从已经含有源点的 $N'$ 开始，每轮线性扫描待选结点，要检查 $n-1,n-2,\ldots,1$ 个候选，合计 $n(n-1)/2$ 个候选。课件从 $n$ 个候选开始计数，写作 $n(n+1)/2$。两种计数的数量级均为 $O(n^2)$，用邻接矩阵实现并更新费用时，单次计算的总时间也是 $O(n^2)$。
 
 最小堆能直接找到当前距离最小的候选。用邻接表和二叉堆时，选取结点和更新距离合计为 $O((n+m)\log n)$。对链路数 $m=O(n)$ 的稀疏网络，得到课件列出的 $O(n\log n)$。
 \end{proposition}
+
+Dijkstra 每轮确定一个结点的依据是链路费用非负。反复重算还有一个实际问题。如果费用直接取当前负载，路由切换又会改变后续费用，可能出现下面的震荡。
 
 \newpage
 \begin{example}{课件例：链路费用随流量变化时的路由震荡}
@@ -813,10 +836,17 @@ A $\to$ 路由器 & \texttt{74-29-9C-E8-FF-55} & \texttt{E6-E9-00-17-BB-4B}\\
 \end{enumerate}
 每一轮 Dijkstra 都按当时的费用求最短路。路由切换又改变下一轮的费用，这个反馈使路径来回变动，称为\textbf{路由震荡}。
 \end{solution}
-\begin{samepage}\annotationarea[4]\end{samepage}
+
+\begin{remark}
+  路由器共享的是当前拓扑和测得的费用，各自按这组费用计算最短路径。多台路由器近乎同时改变路径时，迁移的流量会抬高新路径的费用，并降低原路径的费用。下一轮可能重新选原路径，于是发生震荡。
+\end{remark}
+\begin{remark}
+  可以知道，出问题主要在于费用更新的太快。据此我们可以思考如何进行优化？可以使用稳定的链路费用，链路故障时仍可根据新拓扑重新计算。若需要把拥塞纳入费用，可以先对一段时间的测量取平均，再设通告阈值并限制单次调整幅度，以减少频繁切换。这样也会放慢对持续变化的响应（参见 \href{https://www.rfc-editor.org/rfc/rfc7471.html\#section-5}{RFC 7471 第5节}和 \href{https://pdos.csail.mit.edu/archive/decouto/papers/khanna89.pdf}{ARPANET 路由度量研究第4.3节}）。
+\end{remark}
 
 \newpage
 \subsection{距离向量、Bellman--Ford 方程与无穷计数}
+距离向量算法从邻居获得费用估计，再据此更新本地路由。
 \begin{proposition}{Bellman--Ford 方程}
 对固定的非负链路费用，设 $d_x(y)$ 是从 $x$ 到 $y$ 的实际最短费用，$\mathcal{N}(x)$ 是 $x$ 的直连邻居集合。$d_x(x)=0$。当 $x\ne y$ 时，
 \[
@@ -824,6 +854,9 @@ A $\to$ 路由器 & \texttt{74-29-9C-E8-FF-55} & \texttt{E6-E9-00-17-BB-4B}\\
 \]
 到 $y$ 的路径若先走 $v$，最小费用由两段相加得到，第一段是到 $v$ 的直连费用，第二段是 $v$ 到 $y$ 的最短费用。在所有邻居中取最小值，对应的 $v$ 就是候选路径中的下一跳。所有候选均不可达时，距离记为 $\infty$。
 \end{proposition}
+\begin{remark}
+  这里用到了动态规划的思路。固定第一跳 $v$ 后，子问题是求 $v$ 到 $y$ 的最短费用。把这一费用与第一跳的费用 $c(x,v)$ 相加，再对所有可能的第一跳取最小值。
+\end{remark}
 
 \begin{example}{课件例：用 Bellman--Ford 方程选择下一跳}
 在 Dijkstra 例2的同一拓扑中，$v,x,w$ 到 $z$ 的最短费用依次为 $5,3,3$。只使用 $u$ 的直连费用和这三个值，求 $d_u(z)$ 和下一跳（课件第160页）。
@@ -835,6 +868,14 @@ $u$ 到 $v,x,w$ 的直连费用分别是 $2,1,5$，因此
 \]
 第二个候选最小，所以 $u$ 先把分组交给 $x$，与前面的最短路径树一致。
 \end{solution}
+
+从上述方程可以看出，每个结点需要维护三类信息。
+\begin{enumerate}[nosep]
+  \item 本结点到各直连邻居的链路费用。
+  \item 各邻居最近一次报告的距离向量，其中每项是它到某个目的地的费用估计。
+  \item 根据前两类信息计算出的本地距离向量，以及到相应目的地所选的下一跳。
+\end{enumerate}
+每个邻居独立发送更新。结点保存各邻居最近一次通告的副本，才能在只收到一个邻居的新通告时，把这个新值和其他邻居的已知估计放在一起比较。
 
 \begin{definition}{距离向量与本地保存的信息}
 结点 $x$ 的\textbf{距离向量}是 $D_x=[D_x(y):y\in N]$，其中 $D_x(y)$ 是 $x$ 到 $y$ 的\emph{当前估计}。$x$ 还保存到各邻居的直连费用 $c(x,v)$，以及最近一次收到的各邻居的向量 $D_v$。
@@ -848,6 +889,9 @@ $u$ 到 $v,x,w$ 的直连费用分别是 $2,1,5$，因此
 \end{enumerate}
 从上述初始化开始，在拓扑和费用稳定、更新能送达的条件下，距离估计会逐步收敛到实际最短费用。
 \end{proposition}
+\begin{remark}
+  上面的公式是从所有邻居的估计中重算。RIP 按当前表项逐条处理时，还要区分三种情况。收到原来没有的目的网络且候选可达时，新增表项。候选来自当前下一跳时，更新该邻居提供的度量，即使变大也要处理。候选来自其他邻居时，通常在新度量更小时才替换。第4.7节给出逐项更新的例题。
+\end{remark}
 
 \begin{example}{课件例：三个结点怎样交换距离向量}
 三条双向链路为 $x$--$y$（2）、$y$--$z$（1）、$x$--$z$（7）。按目的顺序 $(x,y,z)$ 写出初始向量，求第一次交换后谁需要继续通告（课件第163--164页）。
@@ -863,11 +907,17 @@ $u$ 到 $v,x,w$ 的直连费用分别是 $2,1,5$，因此
 \end{center}
 $D_x(y)=\min\{2+0,7+1\}=2$，$D_x(z)=\min\{2+1,7+0\}=3$，所以 $x$ 改经 $y$ 到 $z$。同理 $z$ 经 $y$ 到 $x$ 变为3。只有 $x,z$ 的向量改变并继续通告。收到新值后再算，各向量保持不变，达到收敛。
 \end{solution}
-\par\noindent\parbox{\linewidth}{\annotationarea[4]}\par
 
 \begin{example}{课件例：链路费用降低与升高}
 设三条双向链路的费用为 $c(x,y)=4$、$c(y,z)=1$、$c(x,z)=50$。起初 $y$ 直达 $x$ 花费4，$z$ 经 $y$ 到 $x$ 花费5。分别考虑 $x$--$y$ 的费用降为1、升为60，沿消息传递顺序写出 $y,z$ 到 $x$ 的估计（课件第165--166页）。
 \end{example}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=.34\textwidth]{ch04-dv-cost-decrease.png}
+  \hspace{1.4em}
+  \includegraphics[width=.34\textwidth]{ch04-dv-cost-increase.png}
+  \caption{同一拓扑的两种变化。黑字给出初始费用，红字标出改后的 $x$--$y$ 费用。左图降为1，右图升为60。来源：Chapter4-网络层.pdf，PDF 阅读器第165、166页（显示页相同），局部截取。}
+\end{figure}
 \begin{solution}
 费用降为1时，$y$ 立即把自己的估计改为1并通告，$z$ 收到后改为 $1+1=2$。$y$ 收到 $z$ 的新值2，仍选直达的1。这就是课件说的\textbf{好消息传播快}。
 
@@ -880,8 +930,14 @@ $D_x(y)=\min\{2+0,7+1\}=2$，$D_x(z)=\min\{2+1,7+0\}=3$，所以 $x$ 改经 $y$ 
   $D_z(x)$ & 5 & $1+6=7$ & 7 & $1+8=9$ & 9\\\bottomrule
 \end{tabular}
 \end{center}
-在 $t_0$，$y$ 先改成经 $z$ 的6。在 $t_1$，$z$ 收到6，又用它算出经 $y$ 的7，两台路由器形成转发环路。如此交替，坏消息逐跳累加，直至 $z$ 选择费用50的直连路，$y$ 收敛到经 $z$ 的51。
+在 $t_0$，$y$ 先改成经 $z$ 的6，而 $z$ 此时仍经 $y$，两台路由器已经形成转发环路。到 $t_1$，$z$ 收到6，又用它算出经 $y$ 的7。如此交替，度量逐步增加，直至 $z$ 选择费用50的直连路，$y$ 改经 $z$，收敛到51。
 \end{solution}
+
+\begin{remark}
+  从这里也可以看出距离向量路由算法有一个很鲜明的特点：好消息传得快，坏消息传得慢。
+\end{remark}
+
+各路由器按收到消息的时间异步更新。本例中，$y$ 计算时仍使用 $z$ 的旧估计，而 $z$ 的那条路原本就经过 $y$。因此两个结点可能同时保有指向对方的下一跳，依次收到的新通告也会延续这个环路。
 
 \begin{proposition}{无穷计数与两种应对办法}
 链路费用升高或失效后，路由器可能经由环路互相引用旧的距离，估计值在多轮通告中逐步升高，称为\textbf{无穷计数}（count to infinity）。课件给出两种应对办法。
@@ -890,7 +946,12 @@ $D_x(y)=\min\{2+0,7+1\}=2$，$D_x(z)=\min\{2+1,7+0\}=3$，所以 $x$ 改经 $y$ 
   \item \textbf{定义最大度量}。课件第168页以跳数计费，设15为最大有效跳数，16表示不可达。子网断开后，R1 与 R2 交替增加估计。R1 报15时，R2 算出 $1+15=16$，将该路由标记为不可达，也使 R1 随后更新为16。这样给计数设了上限，同时限制了可用路径的最大跳数。
 \end{itemize}
 \end{proposition}
-\begin{samepage}\annotationarea[3]\end{samepage}
+\begin{remark}
+  \textbf{简单水平分割}在向学到某条路由的邻居发送通告时，省略该路由。带毒性逆转的水平分割会通告该路由，但把度量设为不可达。简单水平分割减少报文内容。若对方已经保留了旧路由，毒性逆转还可以显式通知它撤销（\href{https://www.rfc-editor.org/rfc/rfc2453.html\#section-3.4.3}{RFC 2453 第3.4.3节}）。
+\end{remark}
+\begin{remark}
+  跳数上限限制的是协议支持的\emph{路径长度}。例如 RIP 把16跳视为不可达，即使网络物理上仍连通，超过15跳的路也无法作为 RIP 路由使用。15跳是 RIP 的取值，距离向量算法本身可以采用不同的度量和上限。
+\end{remark}
 
 \newpage
 \subsection{链路状态与距离向量的比较}
@@ -899,18 +960,25 @@ $D_x(y)=\min\{2+0,7+1\}=2$，$D_x(z)=\min\{2+1,7+0\}=3$，所以 $x$ 改经 $y$ 
 \begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{1.65cm} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X@{}}
 \toprule
 比较点 & 链路状态（LS） & 距离向量（DV）\\\midrule
-交换的信息 & 将本地邻接关系和费用洪泛到参与计算的路由器。若每个结点各发一份通告，单份洪泛按 $O(m)$ 次转发估算，合计 $O(nm)$。 & 只与直接邻居交换向量。每份完整向量按目的地数增长，总报文量还取决于更新次数。\\
-计算与收敛 & 每台路由器本地运行 Dijkstra。扫描实现的单次计算为 $O(n^2)$。费用随流量变动时可能震荡。 & 各结点异步进行 Bellman--Ford 更新。收敛时间随通告和网络变化而异，可能暂时形成环路或无穷计数。\\
+交换的信息 & 将本地邻接关系与费用泛洪到计算范围内。若 $n$ 个结点各发一份通告，单份按 $O(m)$ 次转发估算，合计 $O(nm)$。 & 仅与直接邻居交换向量。完整向量按目的地数增长，总报文量还取决于更新次数。\\
+本地维护 & 保存计算范围内的拓扑和链路费用，独立运行 Dijkstra。 & 保存本地链路费用、自身和邻居的向量，按 Bellman--Ford 方程更新。\\
+收敛特点 & 获得新拓扑后可直接重算，通常较快。扫描实现的单次计算为 $O(n^2)$。费用随流量变动时可能震荡。 & 变化经邻居逐跳传递，收敛时间不定。坏消息可能引起暂时的环路和无穷计数。\\
 错误传播 & 错误的链路费用可被洪泛，各路由器使用自己的拓扑视图独立计算。 & 错误的路径费用可能被邻居直接纳入计算，并作为新估计继续通告。\\
 \bottomrule
 \end{tabularx}
+\par\smallskip 比较依据为课件第169页和王道教材 PDF 第198--199页（印刷第187--188页）。两种算法的通信开销取决于拓扑规模及通告频率。
 \end{proposition}
-\begin{samepage}\annotationarea[3]\end{samepage}
 
 \subsection{层次路由与自治系统}
+如果每台路由器都要获得整个互联网的详细拓扑，存储、通告和重算的开销都会很大。层次路由把这些工作分别放到各个管理范围内。
 \begin{definition}{自治系统与网关路由器}
 \textbf{层次路由}把互联网划分成若干\textbf{自治系统}（Autonomous System，AS）。一个 AS 由同一管理主体管理，对外呈现一致的路由策略。这样既能缩小维护拓扑、交换路由和计算路径的范围，也能让不同 AS 自主选择内部路由方式。连接本 AS 与其他 AS 的边界路由器称为\textbf{网关路由器}。
 \end{definition}
+\begin{remark}
+  自治系统按管理范围和对外路由策略组织，子网按 IP 前缀划分。一个自治系统可以包含多个子网，并向外通告多个前缀。
+\end{remark}
+
+各自治系统可选择自己的域内路由协议。跨自治系统通信还要先判断哪些出口能到达目的网络、哪些出口符合策略，再由域内路由算出怎么走到选定的出口。
 
 \begin{proposition}{AS 内、AS 间路由共同决定转发}
 \begin{itemize}[nosep]
@@ -919,6 +987,10 @@ $D_x(y)=\min\{2+0,7+1\}=2$，$D_x(z)=\min\{2+1,7+0\}=3$，所以 $x$ 改经 $y$ 
   \item 若同一个外部前缀有多个可用出口，且前面的策略条件相同，\textbf{热土豆路由}选本 AS 内到达费用最小的网关，尽早把分组交给另一个 AS。比较的是本 AS 内到出口的费用。
 \end{itemize}
 \end{proposition}
+
+\begin{remark}
+  热土豆路由按本 AS 内到出口的费用挑选网关。它可以让流量更早离开本 AS，减少本 AS 内部承担的传输，但端到端路径可能因此更长。
+\end{remark}
 
 \begin{example}{课件例：路由器 $1d$ 怎样填写到子网 $x$ 的转发表}
 图中 AS1 通过 $1c$ 接到 AS3，通过 $1b$ 接到 AS2。分别考虑 $x$ 只经 AS3 可达，以及 $x$ 经 AS3、AS2 均可达且允许按热土豆路由选择这两种情形（课件第173--176页）。
@@ -933,7 +1005,6 @@ $D_x(y)=\min\{2+0,7+1\}=2$，$D_x(z)=\min\{2+1,7+0\}=3$，所以 $x$ 改经 $y$ 
   \item 若两个出口都可用，分别查 AS 内到 $1c$、$1b$ 的最小费用，选费用较低者，再查走向这个出口的第一跳接口并写入 $(x,I)$。图中未给定具体费用，因此该情形的结果取决于 AS 内的费用。
 \end{enumerate}
 \end{solution}
-\begin{samepage}\annotationarea[3]\end{samepage}
 
 \newpage
 \subsection{综合例题：两轮距离向量交换}
@@ -954,34 +1025,226 @@ $D_x(y)=\min\{2+0,7+1\}=2$，$D_x(z)=\min\{2+1,7+0\}=3$，所以 $x$ 改经 $y$ 
 \end{center}
 R3 刚失去直连路时仍使用 R2 的旧值2，把估计改为3。第一轮 R2 从两侧都听到3，于是改为4。第二轮 R1 收到4后改为5。按 $(P_1,P_2)$ 排列，R1 \textbf{自己的向量}为 $\boxed{(1,5)}$，还保存 R2 的最新向量 $(2,4)$。此时的5跳是对失效子网的错误估计。
 \end{solution}
-\begin{samepage}\annotationarea[4]\end{samepage}
 
 \par\small\noindent 来源：第4章课件 PDF 阅读器第147--178页（显示页相同）；王道教材 PDF 第197--200页（印刷第186--189页）。\normalsize
 
 \section{路由协议}
+\begin{definition}{内部网关协议与外部网关协议}
+自治系统（AS）内部使用\textbf{内部网关协议}（Interior Gateway Protocol，IGP）。课件列举了 RIP、OSPF，以及 Cisco 的内部网关路由协议（Interior Gateway Routing Protocol，IGRP）。自治系统之间需要交换目的网络的可达性并执行各自的路由策略，BGP 是课件介绍的\textbf{外部网关协议}。两个 AS 可以采用不同的 IGP，在边界仍可用 BGP 交换路由。
+\end{definition}
+
+\newpage
 \subsection{RIP：基于距离向量}
-\textbf{RIP}（路由信息协议）是域内协议，以跳数作为度量；可达的最大度量为15，16表示不可达。相邻路由器周期性交换距离信息，课件给出常见周期30秒、约180秒未收到更新则视邻居失效；具体行为与实现和计时器有关。路由器比较“邻居报告的距离+到邻居的代价”，更新距离及下一跳。RIP采用UDP报文交换，跳数限制使其不适合很大的网络。
+\begin{definition}{RIP 的度量与通告}
+\textbf{RIP}（路由信息协议，Routing Information Protocol）是基于距离向量的 IGP。按课件的跳数规则，直连子网的距离为1，每经一个相邻路由器加1。最大有效跳数为15，16表示不可达。路由表项包括目的网络、跳数和下一跳。
 
-\textbf{课件例（PDF第182--183页）。} 路由器D当前到子网$w$经A为2跳，到$y$经B为2跳，到$z$经B为7跳，到$x$直连为1跳。若收到A的通告：A到$w$为1跳、到$x$为1跳、到$z$经C为4跳，且D到A的链路代价为1，则D重新比较：到$w$经A为$1+1=2$跳；到$x$经A为2跳但直连1跳更短；到$z$经A为$1+4=5$跳，比经B的7跳更短，故改成经A、5跳。此例展示DV的“邻居所报距离加本地链路费用，再取最小值”。
+RIP 与直接相邻的路由器交换通告，周期通常为30秒。周期通告可分成多个报文发送，不带认证字段的单条响应报文最多容纳25个路由条目。课件中的 \texttt{routed} 是管理 RIP 路由的后台应用进程。通告封装在 UDP 中，RIP 使用 UDP 端口520。学习到的路由用于更新转发表，普通分组由转发表指导转发。
+\end{definition}
 
-课件指出RIP表由应用进程route-d管理，周期性通告通过UDP数据报发送；收到并处理通告后，路由器据此更新转发表。\annotationarea[4]
+\begin{example}{课件例：从路由器 A 数到各目的子网的跳数}
+按课件第181页的拓扑，求 $A$ 到子网 $u,v,w,x,y,z$ 的 RIP 度量。
+\end{example}
+\begin{figure}[H]
+  \centering\includegraphics[width=.35\textwidth]{ch04-rip-hops.png}
+  \caption{RIP 跳数算例。$A,B,C,D$ 是路由器，小写字母标出各自连接的子网。来源：Chapter4-网络层.pdf，PDF 阅读器第181页（显示页181），局部截取。}
+\end{figure}
+\begin{solution}
+$u$ 直连，记1跳。到 $v,w$ 经 $B$，到 $z$ 经 $C$，均为 $1+1=2$ 跳。去 $x,y$ 都要先经 $B$ 或 $C$ 到 $D$，再加上直连子网的一跳，得到 $2+1=3$ 跳。按题目顺序的度量为 $(1,2,2,3,3,2)$。
+\end{solution}
 
+\begin{proposition}{接收 RIP 通告后的三种表项更新}
+记号 $\langle P,d,G\rangle$ 表示目的前缀 $P$、距离 $d$ 和下一跳 $G$。在课件采用的每段一跳模型中，若邻居 $G$ 报告自己到 $P$ 的度量为 $m$，则经 $G$ 的候选度量为 $\min\{16,1+m\}$。按教材的逐项更新规则处理。
+\begin{enumerate}[nosep]
+  \item \textbf{原表中没有 $P$}。候选可达时，添加经 $G$ 的表项。
+  \item \textbf{原表的下一跳就是 $G$}。以该邻居最新的通告更新本地度量。新值变大也要处理，到16时标记原路由不可达。
+  \item \textbf{原表的下一跳是其他邻居}。常规比较中，候选度量更小时才替换原路由。
+\end{enumerate}
+第二种情况关系到坏消息能否传下去。如果原下一跳报告费用上升，本路由器就要更新这条原先依赖它的路径。
+\end{proposition}
+
+\begin{example}{课件例：D 收到 A 的通告后怎样改表}
+D 的原路由依次为 $w$ 经 A 两跳、$y$ 经 B 两跳、$z$ 经 B 七跳、$x$ 直连一跳。此时 A 报告到 $w,x,z$ 的度量分别为 $1,1,4$。求 D 的新表（课件第182--183页）。
+\end{example}
+\begin{solution}
+\begin{center}\small\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lccc}
+  \toprule
+  目的子网 & 原下一跳、度量 & 经 A 的候选度量 & 新下一跳、度量\\\midrule
+  $w$ & A，2 & $1+1=2$ & A，2\\
+  $y$ & B，2 & 本次未给出 & B，2\\
+  $z$ & B，7 & $1+4=5$ & A，5\\
+  $x$ & 直连，1 & $1+1=2$ & 直连，1\\\bottomrule
+\end{tabular}
+\end{center}
+$w$ 仍从原下一跳 A 学到，度量保持2。经 A 到 $x$ 比直连远，保留直连。到 $z$ 改用 A 的五跳路由。A 下一跳之后怎样转发由 A 自己的路由表决定。
+\end{solution}
+
+\begin{example}{参考书补充：同一下一跳报告的距离变大}
+R6 原来经 R4 到 Net2 的度量为3，经 R5 到 Net3 的度量为4，尚无 Net1 的表项。R4 通告到 Net1、Net2、Net3 的度量依次为 $3,4,1$。把这三个表项分别更新（王道教材 PDF 第200--201页，印刷第189--190页）。
+\end{example}
+\begin{solution}
+R6 给 R4 报来的各项加1，得到候选 $4,5,2$。因此新增 Net1 经 R4、4跳，更新 Net2 为经 R4、5跳，并将 Net3 改为经 R4、2跳。Net2 原本就依赖 R4，所以即使新度量增加，也要接受原下一跳的变化。
+\end{solution}
+
+\begin{proposition}{RIP 的失效检测与收敛}
+对某条经邻居学到的路由，如果约180秒未收到刷新，该路由超时并标记为16。路由器失去这条路径后可以采用其他邻居提供的可达候选，并在度量改变时触发通告。课件第184页把邻居或链路失效表现为长期收不到通告。具体的超时对象是路由表项。
+
+水平分割、毒性逆转和最大度量的机制见第4.6节。毒性逆转可抑制两个结点互相指向的环路。RIP 结构简单，度量易于检查。15跳限制了可支持的路径长度，定期通告的开销随表项数增加，坏消息也可能需要多轮更新才能传播。
+\end{proposition}
+\par\noindent\parbox{\linewidth}{\annotationarea[4]}\par
+
+\newpage
 \subsection{OSPF：链路状态与分区}
-\textbf{OSPF}（开放最短路径优先）是域内链路状态协议：路由器泛洪链路状态信息，构建拓扑数据库，用Dijkstra计算路径；OSPF报文直接由IP承载。它可使用费用而非简单跳数，支持等价多路径及认证。
+\begin{definition}{OSPF、链路状态通告与链路状态数据库}
+\textbf{OSPF}（开放最短路径优先，Open Shortest Path First）是一种开放标准的 IGP，使用链路状态算法。路由器发布\textbf{链路状态通告}（Link State Advertisement，LSA），例如描述本路由器的链路及其费用。互相传递同一计算范围内的 LSA 后，路由器把它们收集到\textbf{链路状态数据库}（Link State Database，LSDB），再各自以自己为源运行 Dijkstra，得到到各目的地的下一跳。OSPF 报文直接封装在 IP 数据报中，IPv4 协议号为89。课件还列出同属链路状态类的中间系统到中间系统路由协议（IS-IS）。
+\end{definition}
 
-较大自治系统可分为多个\textbf{区域 area}和主干区域。区域内路由器掌握本区域详细拓扑；区域边界路由器连接区域与主干，并传播汇总信息；主干路由器在主干区运行OSPF，AS边界路由器负责与外部路由信息交互。区域减少拓扑信息扩散和计算规模；图中虚线包围不同区域，中间为主干。
-\begin{figure}[H]\centering\includegraphics[width=.8\textwidth]{ch04-ospf-area.png}\caption{OSPF分区结构：区域经主干互连。来源：Chapter4-网络层.pdf，PDF第188页（显示页188），局部截取。}\end{figure}
+\begin{proposition}{OSPF 如何建立和维护路由}
+路由器先发现邻居、建立需要的邻接关系，再同步数据库。邻接关系是路由器进行数据库同步和可靠交换的关系。LSA 的序号等信息用于判断新旧。链路状态发生变化时，新的 LSA 会在其作用范围内被可靠地泛洪。收到新状态的路由器更新 LSDB 并据此重算。正常情况下，LSA 也会定期刷新。
+\end{proposition}
+
+\begin{proposition}{参考书补充：OSPF 的五类报文}
+\small
+\begin{tabularx}{\linewidth}{@{}p{2.85cm}>{\raggedright\arraybackslash}X@{}}
+\toprule
+报文 & 用途\\\midrule
+Hello（问候） & 发现邻居、确认双向连通并维护邻居关系。\\
+DD（数据库描述） & 交换数据库中 LSA 的摘要，找出本地缺少或版本较旧的条目。\\
+LSR（链路状态请求） & 向邻接路由器请求所缺条目的详细内容。\\
+LSU（链路状态更新） & 携带一条或多条 LSA，用于同步数据库和泛洪更新。\\
+LSAck（链路状态确认） & 确认收到 LSA，支撑可靠交换。\\\bottomrule
+\end{tabularx}
+\par\smallskip
+例如，两台刚建立邻接的路由器用 DD 比对摘要。若一台缺少某条 LSA，就用 LSR 请求，对方用 LSU 发来内容，接收方再用 LSAck 确认。依据为王道教材 PDF 第203--204页（印刷第192--193页）。
+\end{proposition}
+
+\begin{proposition}{等价多路径、认证与课件所列扩展}
+OSPF 允许对到同一目的网络的等价路径保留多个下一跳，也可以配置报文认证。课件提到的 ToS（Type of Service，服务类型）费用属于早期 OSPF 的相关机制，RFC 2328 保留这些字段用于兼容。课件的 MOSPF（多播 OSPF）是扩展，复用 OSPF 的拓扑数据库，并加入组成员信息来计算多播树。RIPv2 同样定义了认证格式，比较认证能力时应区分协议版本。
+\end{proposition}
+\par\noindent\parbox{\linewidth}{\annotationarea[4]}\par
+
+\begin{definition}{OSPF 区域与四类路由器}
+OSPF 可在同一 AS 内划分若干\textbf{区域}（Area），由\textbf{主干区域}（Backbone，区域0）连接。区域内的详细拓扑通告留在本区域，其他区域主要依据区边界路由器提供的可达性和费用计算区间路由。一个路由器可以兼任多个角色。
+\begin{itemize}[nosep]
+  \item \textbf{内部路由器}（IR）参与 OSPF 的接口都在同一区域，掌握该区域的详细拓扑。
+  \item \textbf{区边界路由器}（ABR）连接主干与其他区域，维护所连接区域的数据库，并向其他区域通告可达网络和费用。
+  \item \textbf{主干路由器}（BR）至少有一个接口属于主干区域，在主干中运行 OSPF。
+  \item \textbf{AS 边界路由器}（ASBR）把来自本 OSPF 路由域外的路由引入 OSPF。课件图中的 ASBR 连接其他 AS。
+\end{itemize}
+\end{definition}
+
+\begin{example}{依据课件分区图判断跨区路径}
+区域1中的路由器要把分组发给区域3中的网络。在图示两级分区中，分组通常按什么顺序经过各区域？区域1内部路由器需要掌握区域3的所有链路吗？
+\end{example}
+\begin{figure}[H]
+  \centering\includegraphics[width=.75\textwidth]{ch04-ospf-area.png}
+  \caption{OSPF 分区。虚线圈出各区域，蓝色部分为主干，处在区域和主干相接处的路由器承担区边界角色。来源：Chapter4-网络层.pdf，PDF 阅读器第188页（显示页188），局部截取。}
+\end{figure}
+\begin{solution}
+分组依次经过区域1、区域1的 ABR、主干、区域3的 ABR，最后送到区域3的目的网络。区域1的内部路由器根据本区域的拓扑和区间可达性通告，就能选定区内出口。
+\end{solution}
+\par\noindent\parbox{\linewidth}{\annotationarea[4]}\par
 
 \subsection{BGP：自治系统之间的策略路由}
-\textbf{BGP}（边界网关协议）用于AS间交换目的前缀可达性；两个对等体通过TCP会话交换路径信息。eBGP在不同AS对等体间交换，iBGP在同一AS内部传播。路径通告包括\textbf{AS-PATH}（所经过的AS序列，可用于检测包含自身AS的环路）和\textbf{NEXT-HOP}（下一跳属性）。接收方可依据策略接受或拒绝，进而依据本地偏好、AS路径长度、到下一跳的内部代价等选择。策略优先于单纯的最短距离，不是每条学到的路由都会被再次通告。
+\begin{definition}{BGP、前缀与对等会话}
+\textbf{BGP}（边界网关协议，Border Gateway Protocol）用\textbf{路径向量}交换去往目的前缀的路径及其属性。前缀是用地址和长度（例如 \texttt{192.0.2.0/24}）表示的目的网络，通告该前缀表示通告方愿意按提供的路径转发去往它的流量。满足条件的多个前缀也可以聚合后再通告。
 
-BGP会话先建立TCP连接，再用OPEN协商参数；UPDATE通告或撤销路径，KEEPALIVE维持会话，NOTIFICATION报告差错并关闭会话。课件中的商业关系例表明：某AS未必愿意为两个非客户之间免费中转，故出口策略会限制可通告的路径。RIP、OSPF解决AS内部路由，BGP主要解决AS间可达性和策略。
-\begin{example}{自拟例：为什么 BGP 不总选最短 AS 路径？}
-假设两条可用路径的 AS-PATH 分别为 $[B,C]$ 和 $[D,E,F]$。如果本地偏好等前面准则相同，前者的 AS 数量更少，可在比较 AS-PATH 长度时胜出；若策略给后者更高的本地偏好，则应先按本地偏好判断，不能只数 AS 个数。之后若其他条件相同，热土豆路由倾向选本 AS 内部到出口费用较小者，并不保证整个端到端路径最短。
+交换 BGP 报文的两个路由器称为\textbf{对等体}（peers），它们通过通常长期保持的 TCP 连接建立 BGP 会话，服务端口为179。\textbf{eBGP} 会话在不同 AS 的对等体之间传递路由，\textbf{iBGP} 会话在同一 AS 的 BGP 路由器之间传递这些可达性信息。域内到达出口的路径仍由 IGP 等路由信息决定。
+\end{definition}
+
+\begin{proposition}{BGP 的四类基本报文与会话顺序}
+\begin{enumerate}[nosep]
+  \item \textbf{OPEN（打开）}。TCP 连接先建立。双方随后发送 OPEN，交换版本、AS 号和保持时间等信息，初始化 BGP 会话。
+  \item \textbf{KEEPALIVE（保活）}。接受对方的 OPEN 后用它确认。会话建立后也可用它维持会话。
+  \item \textbf{UPDATE（更新）}。通告一个或多个前缀的可达路径和属性，或撤销先前通告的路径。建立会话时按出口策略发送可通告的路由，此后随变化增量更新。
+  \item \textbf{NOTIFICATION（通知）}。报告协议错误或终止原因，随后关闭 BGP 会话。
+\end{enumerate}
+课件第193页把 OPEN 写在连接建立一项中。按 RFC 4271 第4.2节，先建立 TCP，再用 OPEN 初始化 BGP 会话。
+\end{proposition}
+
+\begin{definition}{BGP 路由的 AS-PATH 和 NEXT-HOP}
+一条 BGP 路由由\textbf{前缀和属性}组成。
+\begin{itemize}[nosep]
+  \item \textbf{AS-PATH}（AS 路径）记录该路由经过的 AS 序列。典型的外部重新通告会把本 AS 号加到路径开头。同一 AS 内用 iBGP 传播时保留该序列。若收到的 AS-PATH 已包含本 AS 号，通常丢弃该路径，以防止 AS 级环路。
+  \item \textbf{NEXT-HOP}（下一跳属性）给出用于到达该 BGP 路由的下一跳地址。在课件的直连 eBGP 示例里，它是邻居 AS 的网关接口 IP。本 AS 内的路由器仍要查询自己怎样到达该地址，才能得到发送数据报所用的第一跳和输出接口。
+\end{itemize}
+\end{definition}
+
+\begin{example}{课件例：从 AS3 到 AS2 的可达性信息怎样传播}
+AS3 通过 $3a$ 向 AS1 通告前缀 $P$。说明 $1c$ 怎样传播路由、$1b$ 何时可向 AS2 通告，以及 AS1 内部路由器怎样确定输出接口（课件第194--196页）。
 \end{example}
-\par\small\noindent 来源：课件 PDF 第180--200页；教材 PDF 第199--206页（印刷第188--195页）。\normalsize
+\begin{figure}[H]
+  \centering\includegraphics[width=.9\textwidth]{ch04-bgp-sessions.png}
+  \caption{BGP 可达性的分发。红实线是跨 AS 的 eBGP 会话，黑虚线是 AS 内的 iBGP 会话。来源：Chapter4-网络层.pdf，PDF 阅读器第195页（显示页195），局部截取。}
+\end{figure}
+\begin{solution}
+\begin{enumerate}[nosep]
+  \item $3a$ 通过 eBGP 把 $P$ 与路径属性通告给 $1c$，课件第196页用 \texttt{11.11.1.1} 表示 $3a$ 一侧的 NEXT-HOP 地址。
+  \item $1c$ 接受路由后，通过 iBGP 在 AS1 内传播。$1d$ 等内部路由器需要同时满足策略选择和 NEXT-HOP 可达条件，才可为 $P$ 安装路由。在该拓扑中，可结合 AS1 的域内路由先找去往边界 $1c$ 的第一跳。
+  \item 当 $1b$ 选中该路由且出口策略允许时，它可通过与 $2a$ 的 eBGP 会话通告 $P$。通常会把 AS1 加到 AS-PATH 前面，NEXT-HOP 指向 AS2 可到达的 AS1 边界接口。
+\end{enumerate}
+在接受此路由并选用它的前提下，数据流向 $P$ 时跨 AS 的顺序可以是 AS2 $\to$ AS1 $\to$ AS3，与这条通告的传播方向相反。
+\end{solution}
+\par\noindent\parbox{\linewidth}{\annotationarea[4]}\par
 
-\annotationarea[4]
+\begin{proposition}{BGP 的输入策略、路由选择与输出策略}
+通过\textbf{输入策略}，路由器决定接受哪些通告并为路由赋予本地偏好。路由器为\emph{同一个目的前缀}选择可用路线。课件第197页的简化判据按以下顺序比较。
+\begin{enumerate}[nosep]
+  \item \textbf{本地偏好}（LOCAL\_PREF）较高的路线优先。
+  \item 前项相同时，倾向选择 \textbf{AS-PATH 较短}的路线。
+  \item 前面条件相同时，比较本 AS 内到各 NEXT-HOP 的费用，可按\textbf{热土豆路由}选择最近出口。
+  \item 如果仍然相同，用附加准则决定。
+\end{enumerate}
+实际选路还涉及 NEXT-HOP 可达性及规范规定的其他比较条件。选好本地路线后，\textbf{输出策略}再决定向每个对等体通告哪些路由。路由项进入转发表后，实际收包时按目的 IP 做最长前缀匹配。
+\end{proposition}
+
+\begin{example}{按课件顺序判断到同一前缀的两条路线}
+候选甲、乙均可用。甲的本地偏好为100、AS-PATH 长度为2、到出口费用为5。乙的对应值为200、3、12。先按这些值选择，再考虑两条路线的本地偏好都为100的情形。
+\end{example}
+\begin{solution}
+最先比较本地偏好，乙的200较高，选乙。若两者本地偏好都为100，比较 AS-PATH 长度，甲的2较短，选甲。只有前面比较结果相同时，才继续比较到出口的费用。
+\end{solution}
+
+\begin{example}{课件例：客户与提供商为什么限制通告}
+图中 A、B、C 是提供商网络，W 和 Y 分别只接入一个提供商，属于桩网络。X 同时接入 B、C，属于双宿网络。按课件采用的策略，X 只承载自己的流量，B 只愿为发往或来自自身客户的流量提供中转。
+\begin{enumerate}[nosep]
+  \item X 如果不想替 B 转发去 C 的流量，需要控制哪条通告？
+  \item A 把到 W 的路径 \texttt{AW} 告诉 B，B 已把 \texttt{BAW} 通告给客户 X。B 应该把同一条路径也通告给 C 吗？
+\end{enumerate}
+\end{example}
+\begin{figure}[H]
+  \centering\includegraphics[width=.79\textwidth]{ch04-bgp-policy.png}
+  \caption{提供商和客户的互连关系。蓝色结点 A、B、C 为提供商，绿色结点 W、X、Y 为客户。来源：Chapter4-网络层.pdf，PDF 阅读器第198页（显示页198），局部截取。}
+\end{figure}
+\begin{solution}
+\begin{enumerate}[nosep]
+  \item X 不向 B 通告从 C 学到的路由。否则 B 可能把经过 X 去往 C 的路径视为可用。
+  \item B 不向 C 通告 \texttt{BAW}。如果 C 采用这条路线，去 W 的流量将沿 \texttt{CBAW} 经过 B，而 C 和 W 均非 B 的客户。按图中连接，C 可以经 A 到 W。向 X 通告则符合 B 为客户提供中转的策略。
+\end{enumerate}
+\end{solution}
+\par\noindent\parbox{\linewidth}{\annotationarea[4]}\par
+
+\subsection{RIP、OSPF 与 BGP 的比较}
+\begin{proposition}{域内路由和域间路由的目标}
+域内路由由同一个管理范围决定，可侧重跳数、链路费用等性能指标。域间路由还要控制哪些路径可接受、愿意为谁中转以及对外提供哪些可达性。分层后，域间主要交换前缀和属性，域内的详细拓扑可以留在本 AS，缩小了路由信息交换与计算的范围。
+\end{proposition}
+
+\begin{proposition}{交换范围、内容和承载方式}
+\small
+\begin{tabularx}{\linewidth}{@{}p{1.45cm}*{3}{>{\raggedright\arraybackslash}X}@{}}
+\toprule
+比较点 & RIP & OSPF & BGP\\\midrule
+作用范围 & AS 内 & AS 内，可划分区域 & 域间选路，iBGP 在域内分发 BGP 路由\\
+算法与度量 & 距离向量，按跳数比较 & 链路状态，按链路费用求最短路径 & 路径向量，按策略及属性选择\\
+通告内容 & 本地路由的目的网络与距离 & LSA 描述拓扑、区间可达性等信息 & 前缀、路径属性和撤销信息\\
+交换方式 & 向直接邻居周期通告，可触发更新 & 通过邻居在适用范围内泛洪，状态变化触发更新 & 与对等体建立会话，按策略通告，变化时增量更新\\
+报文承载 & UDP，端口520 & IP，协议号89 & TCP，端口179\\\bottomrule
+\end{tabularx}
+\end{proposition}
+\par\noindent\parbox{\linewidth}{\annotationarea[3]}\par
+
+\par\small\noindent 来源：第4章课件 PDF 阅读器第179--200页（显示页相同）；王道教材 PDF 第199--207页（印刷第188--196页）。规范核对见 \href{https://www.rfc-editor.org/rfc/rfc2453.html}{RFC 2453}、\href{https://www.rfc-editor.org/rfc/rfc2328.html}{RFC 2328}、\href{https://www.rfc-editor.org/rfc/rfc1584.html}{RFC 1584} 和 \href{https://www.rfc-editor.org/rfc/rfc4271.html}{RFC 4271}。\normalsize
+
 \section{课件例题与综合练习详解}
 \subsection{课件例2：链路状态算法Dijkstra的第二个算例}
 从 $u$ 出发，课件 PDF 第156--157页给出另一组链路费用。按表格逐轮从未确定结点中选当前费用最小者，确定次序为 $u,x,y,v,w,z$；最终费用为 $D(v)=2$、$D(x)=1$、$D(y)=2$、$D(w)=3$、$D(z)=4$。例如 $u$ 到 $w$ 的路径是 $u\to x\to y\to w$，总费用 $1+1+1=3$；$u$ 到 $z$ 的路径是 $u\to x\to y\to z$，总费用 $1+1+2=4$。转发表记录第一跳：去往 $v$ 走 $(u,v)$，去往 $x,y,w,z$ 均先走 $(u,x)$。注意，费用表中的前驱结点与转发表中的下一跳不是同一概念：若前驱不是源结点，要沿前驱链回溯到源结点后的第一个结点。\annotationarea[4]
