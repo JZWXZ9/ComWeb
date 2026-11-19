@@ -706,55 +706,258 @@ A $\to$ 路由器 & \texttt{74-29-9C-E8-FF-55} & \texttt{E6-E9-00-17-BB-4B}\\
 \par\small\noindent 来源：第4章课件 PDF 阅读器第115--146页（显示页相同）；王道教材 PDF 第155--162页（印刷第144--151页）。ICMP 和 DHCP 的规范补充分别参见 \href{https://www.rfc-editor.org/rfc/rfc1812.html}{RFC 1812}、\href{https://www.rfc-editor.org/rfc/rfc6633.html}{RFC 6633} 和 \href{https://www.rfc-editor.org/rfc/rfc2131.html}{RFC 2131}。\normalsize
 
 \section{路由算法}
-\subsection{图、费用和最短路径}
-把路由器抽象为结点、 链路抽象为边；链路费用 $c(x,y)$ 可表示跳数、配置的代价等。路径费用是各链路费用之和，\textbf{最短路径}即总费用最小，不一定是物理距离最短。静态路由由管理者配置，动态路由依据协议交换信息并更新；优先级取决于设备具体配置。
+\subsection{图、费用与路由分类}
 
-\begin{example}{自拟例：最短路径不一定跳数最少}
-设 A 到 B 的费用为2，B 到 C 的费用为1，A 到 C 的直连费用为7。直连 A--C 只有一跳但费用为7；A--B--C 有两跳，费用为 $2+1=3$，因此按费用选后者。结点上的“下一跳”是在选出的路径上首先交给哪个邻居；A 到 C 的下一跳是 B。
+\begin{definition}{路由、转发与下一跳}
+\textbf{路由}决定到各目的网络应采用什么路径，路由算法根据拓扑、费用等信息计算路径。路径上接收本路由器分组的第一个相邻路由器称为\textbf{下一跳}。\textbf{转发}发生在分组到达时，本路由器根据目的地址查询转发表，决定当前应从哪个接口把分组送出（课件第148页）。
+\end{definition}
+
+\begin{definition}{网络的图抽象与最短路径}
+用图 $G=(N,E)$ 表示网络，$N$ 是路由器结点集合，$E$ 是链路集合。$c(x,y)$ 表示从 $x$ 到相邻结点 $y$ 的链路费用，无直连链路时记为 $\infty$。费用是路由算法用来比较路径的度量，可以统一取1，也可以根据带宽的倒数、拥塞程度等设定。若两个方向的费用分别给定，应使用实际行进方向的费用。
+
+一条路径 $x_1\to x_2\to\cdots\to x_p$ 的总费用为 $\sum_{i=1}^{p-1} c(x_i,x_{i+1})$。\textbf{最短路径}指总费用最小的路径。每段费用都为1时，总费用就是跳数。
+\end{definition}
+
+\begin{example}{费用与跳数}
+从 $A$ 到 $C$ 可直连，也可经 $B$。设 $c(A,C)=7$、$c(A,B)=2$、$c(B,C)=1$。按费用应选哪条路径？下一跳是谁？
 \end{example}
-\subsection{链路状态与Dijkstra算法}
-链路状态算法让路由器通告本地链路信息，参与者形成拓扑图，再各自计算到各目的地的最小费用路径。Dijkstra算法假设链路费用非负；记 $N'$ 为已确定最短费用的结点集，$D(v)$ 为源到结点 $v$ 的当前最好估计。初始化源结点加入 $N'$，其邻居估计设为直接链路费用，其他为无穷。然后重复：
+\begin{solution}
+直连花费7，经 $B$ 花费 $2+1=3$，因此选 $A\to B\to C$，下一跳为 $B$。若把每段费用改为1，直连只需一跳，便会胜出。
+\end{solution}
+
+\begin{proposition}{路由的两个分类角度}
+\begin{itemize}[nosep]
+  \item 按\textbf{计算所用的信息}分类。全局信息算法使用完整的拓扑和链路费用，典型为链路状态（Link State，LS）。分散信息算法以本地邻居、直连费用及邻居交换的信息为基础，典型为距离向量（Distance Vector，DV）。
+  \item 按\textbf{路由是否随网络状态更新}分类。静态路由由管理员配置，开销较小，通常靠人工调整。动态路由用协议交换信息，可定期更新或响应拓扑、费用变化，需要额外的通信和计算。静态路由的选择优先级由设备和配置决定。
+\end{itemize}
+\end{proposition}
+\begin{samepage}\annotationarea[3]\end{samepage}
+
+\subsection{链路状态与 Dijkstra 算法}
+\begin{definition}{链路状态与链路状态广播}
+本路由器的\textbf{链路状态}包括与哪些邻居相连、到这些邻居的链路费用。各路由器通过洪泛传播这类通告，收到新通告的路由器继续沿其他链路转发，从而使参与计算的路由器逐步获得同一份拓扑和费用信息。每台路由器以自己为源运行 Dijkstra，再将得到的第一跳写入自己的转发表。
+\end{definition}
+
+\begin{proposition}{Dijkstra 单源最短路径算法}
+给定一份固定的拓扑和\textbf{非负}链路费用，从源结点 $u$ 计算到所有可达结点的最短路径。$N'$ 是最短费用已确定的结点集合，$D(v)$ 是当前找到的从 $u$ 到 $v$ 的最小费用，$p(v)$ 是当前这条路径中 $v$ 的前驱结点。
 \begin{enumerate}[nosep]
-\item 在未确定结点中选 $D$ 最小的结点 $w$，加入 $N'$；
-\item 对其未确定邻居 $v$，比较旧路径与经 $w$ 的路径，更新
-\[D(v)\leftarrow\min\{D(v),\ D(w)+c(w,v)\};\]
-\item 记录前驱，直到目标已确定或所有可达结点确定；沿前驱回溯即可找到源的下一跳。
+  \item \textbf{初始化}。令 $N'=\{u\}$、$D(u)=0$。对 $u$ 的邻居设置 $D(v)=c(u,v)$、$p(v)=u$，其他结点的 $D(v)$ 为 $\infty$，前驱暂空。
+  \item \textbf{确定一个结点}。从 $N'$ 外选取 $D(w)$ 最小的结点 $w$，将其加入 $N'$。当最小值为 $\infty$ 时，可结束计算，余下结点不可达。
+  \item \textbf{尝试经 $w$ 改进其他路径}。对 $w$ 的每个尚未确定的邻居 $v$，比较旧值 $D(v)$ 与 $D(w)+c(w,v)$。若后者更小，就更新 $D(v)$ 并令 $p(v)=w$。继续执行上一步，直到可达结点都已确定。
 \end{enumerate}
-\textbf{课件图示例：}从 $u$ 出发，直接到 $w$ 的费用3、到 $x$ 为5、到 $v$ 为7。先确定 $w$，经 $w$ 可把 $v$ 改为 $3+3=6$；再确定 $x$，之后确定 $v$，经 $v$ 将 $y$ 更新为10；经 $y$ 将 $z$ 更新为12。表中每行表示已确定集合增长一次，$p(v)$ 是当前最优路径上的前驱。
-\begin{figure}[H]\centering\includegraphics[width=.88\textwidth]{ch04-dijkstra.png}\caption{Dijkstra逐轮更新；左表记当前费用及前驱，右图中边上数字是费用。来源：Chapter4-网络层.pdf，PDF第155页（显示页155），局部截取。}\end{figure}
-\begin{example}{课件图的逐轮计算}
-初始以 $u$ 为源：$D(v,w,x,y,z)=(7,3,5,\infty,\infty)$。选最小的 $w=3$，更新 $v=\min(7,3+3)=6$、$y=3+8=11$；再选 $x=5$，得到 $z=5+9=14$，$y$ 保持11；选 $v=6$ 后，$y=\min(11,6+4)=10$；选 $y=10$ 后，$z=\min(14,10+2)=12$；最后确定 $z$。确定顺序为 $u,w,x,v,y,z$。从 $z$ 沿前驱回溯为 $z\leftarrow y\leftarrow v\leftarrow w\leftarrow u$，所以 $u$ 发往 $z$ 的下一跳为 $w$。图中 $p(v)$ 等记号表示前驱，不一定是源结点的下一跳。
+绕经其他待选结点的路径，离开 $N'$ 时的费用至少为 $D(w)$，再走只会加上非负费用，所以可以确定 $w$。沿前驱回溯，源点后的第一个结点就是下一跳。
+\end{proposition}
+
+\begin{example}{课件例1：按表更新费用和前驱}
+在下图的网络中，以 $u$ 为源依次确定各结点。求到 $z$ 的最小费用、完整路径和 $u$ 的下一跳。
 \end{example}
-如果费用随流量改变且各路由器同步改路，负载可能在两条路径之间来回迁移，产生振荡。
+\begin{figure}[H]
+  \centering\includegraphics[width=.9\textwidth]{ch04-dijkstra.png}
+  \caption{Dijkstra 例1。左表每格是候选费用与前驱，红圈标出下一轮选择，右图边上的数字为费用。来源：Chapter4-网络层.pdf，PDF 阅读器第155页（显示页155），局部截取。}
+\end{figure}
+\begin{solution}
+初始化时，$v,w,x$ 的费用分别为 $7,3,5$，$y,z$ 的费用为 $\infty$。依次进行以下更新。
+\begin{enumerate}[nosep]
+  \item 选 $w$（3）。经 $w$ 到 $v$ 的费用 $3+3=6$，小于7。到 $y$ 首次得到 $3+8=11$。到 $x$ 的候选值 $3+4=7$ 大于已有的5。
+  \item 选 $x$（5）。到 $z$ 首次得到 $5+9=14$。经 $x$ 到 $y$ 需 $5+7=12$，保留原来的11。
+  \item 选 $v$（6）。经 $v$ 把 $y$ 的费用从11改为 $6+4=10$，令 $p(y)=v$。
+  \item 选 $y$（10）。经 $y$ 把 $z$ 的费用从14改为 $10+2=12$，令 $p(z)=y$，随后确定 $z$。
+\end{enumerate}
+确定顺序为 $u,w,x,v,y,z$。前驱回溯为 $z\leftarrow y\leftarrow v\leftarrow w\leftarrow u$，所以路径为 $u\to w\to v\to y\to z$，费用12，下一跳为 $w$。
+\end{solution}
 
-\annotationarea[3]
-\subsection{距离向量与无穷计数}
-距离向量算法中，每个结点知道到邻居的链路费用，并向邻居通告自己到各目的地的距离估计。记 $D_x(y)$ 为结点 $x$ 估计到目的 $y$ 的费用，则收到邻居信息后更新
-\[D_x(y)=\min_{v\text{为}x\text{的邻居}}\{c(x,v)+D_v(y)\}.\]
-例如 $x$ 到 $y$ 为2、$y$ 到 $z$ 为1、$x$ 到 $z$ 直连为7；从 $y$ 得知其到 $z$ 为1后，$x$ 比较 $2+1=3$ 与7，选经 $y$ 的3。邻居继续交换后逐步收敛。
-
-链路失效时，邻居可能仍保存旧距离，并错误地相互相信对方有通路；反复更新使费用逐渐增大，称\textbf{无穷计数}。\textbf{毒性逆转}要求某条路由若经邻居 $v$ 到达目的地，就向 $v$ 报告该目的不可达，能够阻止两结点互相依赖的部分环路，但不能消除所有多结点环路。限制最大度量也能使计数最终停止；例如RIP以16表示不可达。
-
-\begin{example}{自拟例：坏消息为何传播得慢}
-假设每条相邻链路费用为1，R2 原来到目标网络的费用为2，R1 经 R2 到目标的费用为3。目标链路失效后，R2 还收到 R1 的旧估计3，可能误以为经 R1 可达，算出 $1+3=4$；随后 R1 又把经 R2 的估计更新为 $1+4=5$。双方反复引用对方过时信息，费用逐步增加。毒性逆转能阻止某些两结点互指，却不能保证消除所有更复杂的环路。
+\begin{example}{课件例2：由最短路径树得到转发表}
+以图中的链路费用为准，从 $u$ 计算最短路径树和转发表（课件第156--157页）。本图包含费用为5的边 $(u,w)$，第149、152页的边集合文字漏列了这一条边。
 \end{example}
-\annotationarea[4]
-\textbf{链路状态与距离向量的比较：}
-\begin{center}\small\setlength{\tabcolsep}{3pt}
-\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{1.8cm}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X}
-\toprule 比较点 & 链路状态（LS） & 距离向量（DV）\\\midrule
-交换的信息 & 链路状态通告，汇集成网络拓扑 & 邻居之间交换到各目的地的距离估计\\
-计算方式 & 每个路由器运行Dijkstra & 按Bellman--Ford方程反复更新\\
-收敛与问题 & 计算量可为$O(n^2)$；费用随负载变动时可能振荡 & 收敛时间不定；可能有环路及无穷计数\\
-错误传播 & 路由器通告错误链路费用，其他路由器各自计算自己的表 & 路由器通告错误路径费用，邻居可能继续据此更新并传播\\\bottomrule
-\end{tabularx}\end{center}
-\annotationarea[3]
+\begin{figure}[H]
+  \centering\includegraphics[width=.46\textwidth]{ch04-dijkstra-topology.png}
+  \caption{Dijkstra 例2的拓扑。数字是边的费用，红边标出课件解答得到的最短路径树。来源：Chapter4-网络层.pdf，PDF 阅读器第156页（显示页156），局部截取。}
+\end{figure}
+\begin{solution}
+表中的 $(D,p)$ 表示当前费用和前驱，横线表示该结点已确定。加入 $x$ 后，$v$ 和 $y$ 的费用同为2，按课件先取 $y$。
+\begin{center}\small\setlength{\tabcolsep}{3.8pt}
+\begin{tabular}{clccccc}
+  \toprule
+  步骤 & 已加入 $N'$ 的结点 & $v$ & $w$ & $x$ & $y$ & $z$\\\midrule
+  0 & $u$           & $(2,u)$ & $(5,u)$ & $(1,u)$ & $\infty$ & $\infty$\\
+  1 & $u,x$         & $(2,u)$ & $(4,x)$ & --      & $(2,x)$  & $\infty$\\
+  2 & $u,x,y$       & $(2,u)$ & $(3,y)$ & --      & --       & $(4,y)$\\
+  3 & $u,x,y,v$     & --      & $(3,y)$ & --      & --       & $(4,y)$\\
+  4 & $u,x,y,v,w$   & --      & --      & --      & --       & $(4,y)$\\
+  5 & $u,x,y,v,w,z$ & --      & --      & --      & --       & --\\\bottomrule
+\end{tabular}
+\end{center}
+例如，确定 $x$ 后，到 $w$ 的候选费用为 $1+3=4$。确定 $y$ 后再改为 $2+1=3$，同轮得到 $D(z)=2+2=4$。最短路径树的边为 $(u,v),(u,x),(x,y),(y,w),(y,z)$。从 $u$ 看，去 $v$ 的输出链路是 $(u,v)$，去 $x,y,w,z$ 的输出链路都是 $(u,x)$。
+\end{solution}
+\begin{samepage}\annotationarea[4]\end{samepage}
 
-\subsection{层次路由}
-互联网规模大且由不同机构管理，把路由器组织成\textbf{自治系统 AS}。AS内路由协议决定系统内部路径；AS间协议交换外部前缀可达性，内部路由又确定到选定出口的路径。\textbf{热土豆路由}是在其他决策条件相同时，倾向选择本AS内部代价较低的出口；它不保证整个互联网端到端路径最短。
-\par\small\noindent 来源：课件 PDF 第148--178页；教材 PDF 第197--199页（印刷第186--188页）。\normalsize
+\begin{proposition}{单次计算的复杂度}
+设 $n=|N|$、$m=|E|$。从已经含有源点的 $N'$ 开始，每轮线性扫描待选结点，要检查 $n-1,n-2,\ldots,1$ 个候选，合计 $n(n-1)/2$ 个候选。课件从 $n$ 个候选开始计数，写作 $n(n+1)/2$。两种计数的数量级均为 $O(n^2)$，用邻接矩阵实现并更新费用时，单次计算的总时间也是 $O(n^2)$。
 
-\annotationarea[4]
+最小堆能直接找到当前距离最小的候选。用邻接表和二叉堆时，选取结点和更新距离合计为 $O((n+m)\log n)$。对链路数 $m=O(n)$ 的稀疏网络，得到课件列出的 $O(n\log n)$。
+\end{proposition}
+
+\newpage
+\begin{example}{课件例：链路费用随流量变化时的路由震荡}
+设 $B,D$ 各有1单位流量发往 $A$，$C$ 有 $\varepsilon$ 单位，且 $\varepsilon>0$。有向链路的费用等于它当前承载的流量。各路由器用同一时刻测得的费用重算，再近乎同时应用新路由。为什么流量会来回切换？
+\end{example}
+\begin{figure}[H]
+  \centering\includegraphics[width=.97\textwidth]{ch04-routing-oscillation.png}
+  \caption{流量改变费用后反复重算的四个阶段。图外红箭头给出各结点的流量，图内粗红线是当前路径，数字对应黑箭头所示方向的费用。来源：Chapter4-网络层.pdf，PDF 阅读器第158页（显示页158），局部截取。}
+\end{figure}
+\begin{solution}
+\begin{enumerate}[nosep]
+  \item 初始时 $D$ 直达 $A$，$C$ 经 $B$，所以 $D\to A$ 上有1单位，$B\to A$ 上有 $1+\varepsilon$ 单位。按这组费用，$B$ 经 $C,D$ 到 $A$ 只需 $0+0+1=1$，$C$ 经 $D$ 也只需1，二者都选择左侧。
+  \item 流量实际改走左侧后，$D\to A$ 的费用变成 $2+\varepsilon$，$B\to A$、$D\to C$、$C\to B$ 都空闲，费用变为0。此时各结点重算就会选右侧。
+  \item 选右侧后，$B\to A$ 的费用变为 $2+\varepsilon$，通往 $D$ 再到 $A$ 的方向又空闲了，下一轮重新选左侧。继续重算可能重复这种切换。
+\end{enumerate}
+每一轮 Dijkstra 都按当时的费用求最短路。路由切换又改变下一轮的费用，这个反馈使路径来回变动，称为\textbf{路由震荡}。
+\end{solution}
+\begin{samepage}\annotationarea[4]\end{samepage}
+
+\newpage
+\subsection{距离向量、Bellman--Ford 方程与无穷计数}
+\begin{proposition}{Bellman--Ford 方程}
+对固定的非负链路费用，设 $d_x(y)$ 是从 $x$ 到 $y$ 的实际最短费用，$\mathcal{N}(x)$ 是 $x$ 的直连邻居集合。$d_x(x)=0$。当 $x\ne y$ 时，
+\[
+   d_x(y)=\min_{v\in\mathcal{N}(x)}\{c(x,v)+d_v(y)\}.
+\]
+到 $y$ 的路径若先走 $v$，最小费用由两段相加得到，第一段是到 $v$ 的直连费用，第二段是 $v$ 到 $y$ 的最短费用。在所有邻居中取最小值，对应的 $v$ 就是候选路径中的下一跳。所有候选均不可达时，距离记为 $\infty$。
+\end{proposition}
+
+\begin{example}{课件例：用 Bellman--Ford 方程选择下一跳}
+在 Dijkstra 例2的同一拓扑中，$v,x,w$ 到 $z$ 的最短费用依次为 $5,3,3$。只使用 $u$ 的直连费用和这三个值，求 $d_u(z)$ 和下一跳（课件第160页）。
+\end{example}
+\begin{solution}
+$u$ 到 $v,x,w$ 的直连费用分别是 $2,1,5$，因此
+\[
+   d_u(z)=\min\{2+5,\ 1+3,\ 5+3\}=4.
+\]
+第二个候选最小，所以 $u$ 先把分组交给 $x$，与前面的最短路径树一致。
+\end{solution}
+
+\begin{definition}{距离向量与本地保存的信息}
+结点 $x$ 的\textbf{距离向量}是 $D_x=[D_x(y):y\in N]$，其中 $D_x(y)$ 是 $x$ 到 $y$ 的\emph{当前估计}。$x$ 还保存到各邻居的直连费用 $c(x,v)$，以及最近一次收到的各邻居的向量 $D_v$。
+\end{definition}
+
+\begin{proposition}{距离向量的异步、分布式更新}
+\begin{enumerate}[nosep]
+  \item \textbf{初始化}。到自身为0，到邻居取直连费用，其余为 $\infty$。发送初始向量。尚未收到某邻居的向量时，只暂记它到自身为0。
+  \item \textbf{触发与计算}。检测到本地链路费用改变，或收到邻居的新向量时，更新本地记录。对每个 $y\ne x$，重新计算 $D_x(y)\gets\min_{v\in\mathcal{N}(x)}\{c(x,v)+D_v(y)\}$，并选取相应的下一跳。
+  \item \textbf{继续通告}。若本地距离向量改变，就向邻居发送新向量。每台路由器在收到通告或检测到变化时独立更新，各结点无须等到同一时刻。具体协议也可以定期发送。
+\end{enumerate}
+从上述初始化开始，在拓扑和费用稳定、更新能送达的条件下，距离估计会逐步收敛到实际最短费用。
+\end{proposition}
+
+\begin{example}{课件例：三个结点怎样交换距离向量}
+三条双向链路为 $x$--$y$（2）、$y$--$z$（1）、$x$--$z$（7）。按目的顺序 $(x,y,z)$ 写出初始向量，求第一次交换后谁需要继续通告（课件第163--164页）。
+\end{example}
+\begin{solution}
+\begin{center}\small
+\begin{tabular}{lccc}
+  \toprule
+  时刻 & $D_x$ & $D_y$ & $D_z$\\\midrule
+  初始化 & $(0,2,7)$ & $(2,0,1)$ & $(7,1,0)$\\
+  首次交换后 & $(0,2,3)$ & $(2,0,1)$ & $(3,1,0)$\\\bottomrule
+\end{tabular}
+\end{center}
+$D_x(y)=\min\{2+0,7+1\}=2$，$D_x(z)=\min\{2+1,7+0\}=3$，所以 $x$ 改经 $y$ 到 $z$。同理 $z$ 经 $y$ 到 $x$ 变为3。只有 $x,z$ 的向量改变并继续通告。收到新值后再算，各向量保持不变，达到收敛。
+\end{solution}
+\par\noindent\parbox{\linewidth}{\annotationarea[4]}\par
+
+\begin{example}{课件例：链路费用降低与升高}
+设三条双向链路的费用为 $c(x,y)=4$、$c(y,z)=1$、$c(x,z)=50$。起初 $y$ 直达 $x$ 花费4，$z$ 经 $y$ 到 $x$ 花费5。分别考虑 $x$--$y$ 的费用降为1、升为60，沿消息传递顺序写出 $y,z$ 到 $x$ 的估计（课件第165--166页）。
+\end{example}
+\begin{solution}
+费用降为1时，$y$ 立即把自己的估计改为1并通告，$z$ 收到后改为 $1+1=2$。$y$ 收到 $z$ 的新值2，仍选直达的1。这就是课件说的\textbf{好消息传播快}。
+
+费用升为60时，$y$ 还存着 $z$ 的旧估计5。$z$ 原先正是经 $y$ 到 $x$，但普通距离向量只报告距离，$y$ 仍会把 $z$ 当成一条备选路。
+\begin{center}\small
+\begin{tabular}{cccccc}
+  \toprule
+  更新时刻 & $t_0$ & $t_1$ & $t_2$ & $t_3$ & $t_4$\\\midrule
+  $D_y(x)$ & $1+5=6$ & 6 & $1+7=8$ & 8 & $1+9=10$\\
+  $D_z(x)$ & 5 & $1+6=7$ & 7 & $1+8=9$ & 9\\\bottomrule
+\end{tabular}
+\end{center}
+在 $t_0$，$y$ 先改成经 $z$ 的6。在 $t_1$，$z$ 收到6，又用它算出经 $y$ 的7，两台路由器形成转发环路。如此交替，坏消息逐跳累加，直至 $z$ 选择费用50的直连路，$y$ 收敛到经 $z$ 的51。
+\end{solution}
+
+\begin{proposition}{无穷计数与两种应对办法}
+链路费用升高或失效后，路由器可能经由环路互相引用旧的距离，估计值在多轮通告中逐步升高，称为\textbf{无穷计数}（count to infinity）。课件给出两种应对办法。
+\begin{itemize}[nosep]
+  \item \textbf{毒性逆转}（poisoned reverse）。若 $z$ 到 $x$ 的下一跳是 $y$，则 $z$ 单独向 $y$ 通告到 $x$ 的距离为 $\infty$。在上例中，$y$ 检测到费用变为60时先选直连的60。$z$ 收到60后改选直连的50，$y$ 再改为经 $z$ 的51，并向 $z$ 报 $\infty$。这可切断两个结点互为下一跳的依赖，三个或更多结点形成的环路仍可能发生。
+  \item \textbf{定义最大度量}。课件第168页以跳数计费，设15为最大有效跳数，16表示不可达。子网断开后，R1 与 R2 交替增加估计。R1 报15时，R2 算出 $1+15=16$，将该路由标记为不可达，也使 R1 随后更新为16。这样给计数设了上限，同时限制了可用路径的最大跳数。
+\end{itemize}
+\end{proposition}
+\begin{samepage}\annotationarea[3]\end{samepage}
+
+\newpage
+\subsection{链路状态与距离向量的比较}
+\begin{proposition}{通告内容、收敛与错误传播}
+\small
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{1.65cm} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X@{}}
+\toprule
+比较点 & 链路状态（LS） & 距离向量（DV）\\\midrule
+交换的信息 & 将本地邻接关系和费用洪泛到参与计算的路由器。若每个结点各发一份通告，单份洪泛按 $O(m)$ 次转发估算，合计 $O(nm)$。 & 只与直接邻居交换向量。每份完整向量按目的地数增长，总报文量还取决于更新次数。\\
+计算与收敛 & 每台路由器本地运行 Dijkstra。扫描实现的单次计算为 $O(n^2)$。费用随流量变动时可能震荡。 & 各结点异步进行 Bellman--Ford 更新。收敛时间随通告和网络变化而异，可能暂时形成环路或无穷计数。\\
+错误传播 & 错误的链路费用可被洪泛，各路由器使用自己的拓扑视图独立计算。 & 错误的路径费用可能被邻居直接纳入计算，并作为新估计继续通告。\\
+\bottomrule
+\end{tabularx}
+\end{proposition}
+\begin{samepage}\annotationarea[3]\end{samepage}
+
+\subsection{层次路由与自治系统}
+\begin{definition}{自治系统与网关路由器}
+\textbf{层次路由}把互联网划分成若干\textbf{自治系统}（Autonomous System，AS）。一个 AS 由同一管理主体管理，对外呈现一致的路由策略。这样既能缩小维护拓扑、交换路由和计算路径的范围，也能让不同 AS 自主选择内部路由方式。连接本 AS 与其他 AS 的边界路由器称为\textbf{网关路由器}。
+\end{definition}
+
+\begin{proposition}{AS 内、AS 间路由共同决定转发}
+\begin{itemize}[nosep]
+  \item \textbf{AS 内（intra-AS）路由}用来计算本 AS 内部的路径。去往内部目的网络时，据此得到下一跳和输出接口。
+  \item \textbf{AS 间（inter-AS）路由}负责学习哪些外部目的网络可通过哪些出口到达，并把可达性传给 AS 内的路由器。内部路由器确定出口后，再用 AS 内路由确定去往该出口的第一跳和输出接口。
+  \item 若同一个外部前缀有多个可用出口，且前面的策略条件相同，\textbf{热土豆路由}选本 AS 内到达费用最小的网关，尽早把分组交给另一个 AS。比较的是本 AS 内到出口的费用。
+\end{itemize}
+\end{proposition}
+
+\begin{example}{课件例：路由器 $1d$ 怎样填写到子网 $x$ 的转发表}
+图中 AS1 通过 $1c$ 接到 AS3，通过 $1b$ 接到 AS2。分别考虑 $x$ 只经 AS3 可达，以及 $x$ 经 AS3、AS2 均可达且允许按热土豆路由选择这两种情形（课件第173--176页）。
+\end{example}
+\begin{figure}[H]
+  \centering\includegraphics[width=.86\textwidth]{ch04-as-exits.png}
+  \caption{从 AS1 到子网 $x$ 的两个候选出口。蓝色区域区分各 AS，$1d$ 旁的红箭头指向两个候选方向。来源：Chapter4-网络层.pdf，PDF 阅读器第175页（显示页175），局部截取。}
+\end{figure}
+\begin{solution}
+\begin{enumerate}[nosep]
+  \item 若 $x$ 只经 AS3 可达，$1d$ 选 $1c$ 作为出口。设 AS 内到 $1c$ 最小费用路径的第一跳使用接口 $I$，就在转发表写入 $(x,I)$。
+  \item 若两个出口都可用，分别查 AS 内到 $1c$、$1b$ 的最小费用，选费用较低者，再查走向这个出口的第一跳接口并写入 $(x,I)$。图中未给定具体费用，因此该情形的结果取决于 AS 内的费用。
+\end{enumerate}
+\end{solution}
+\begin{samepage}\annotationarea[3]\end{samepage}
+
+\newpage
+\subsection{综合例题：两轮距离向量交换}
+\begin{example}{课件例3：R3 一侧的子网失效}
+两个子网分别接在链式拓扑 $P_1\text{--}\mathrm{R1}\text{--}\mathrm{R2}\text{--}\mathrm{R3}\text{--}P_2$ 的两端，其中 $P_1$ 为 \texttt{192.168.1.0/24}，$P_2$ 为 \texttt{192.168.2.0/23}。直连子网的距离为1，经一个邻居就再加1。全网已收敛后，R3 检测到 $P_2$ 的直连路由失效。按课件第177--178页的普通距离向量模型（本例未启用毒性逆转），两轮交换后 R1 的向量是多少？
+\end{example}
+\begin{solution}
+到 $P_1$ 的距离始终为 $(1,2,3)$（按 R1、R2、R3 的顺序）。到 $P_2$ 的距离按每轮开始时邻居所通告的值计算，演变如下。
+\begin{center}\small
+\begin{tabular}{lccc}
+  \toprule
+  到 $P_2$ 的距离 & R1 & R2 & R3\\\midrule
+  失效前 & 3 & 2 & 1\\
+  R3 刚检测到失效并重算 & 3 & 2 & $1+2=3$\\
+  第一轮交换后 & $1+2=3$ & $1+3=4$ & $1+2=3$\\
+  第二轮交换后 & $1+4=5$ & $1+3=4$ & $1+4=5$\\\bottomrule
+\end{tabular}
+\end{center}
+R3 刚失去直连路时仍使用 R2 的旧值2，把估计改为3。第一轮 R2 从两侧都听到3，于是改为4。第二轮 R1 收到4后改为5。按 $(P_1,P_2)$ 排列，R1 \textbf{自己的向量}为 $\boxed{(1,5)}$，还保存 R2 的最新向量 $(2,4)$。此时的5跳是对失效子网的错误估计。
+\end{solution}
+\begin{samepage}\annotationarea[4]\end{samepage}
+
+\par\small\noindent 来源：第4章课件 PDF 阅读器第147--178页（显示页相同）；王道教材 PDF 第197--200页（印刷第186--189页）。\normalsize
+
 \section{路由协议}
 \subsection{RIP：基于距离向量}
 \textbf{RIP}（路由信息协议）是域内协议，以跳数作为度量；可达的最大度量为15，16表示不可达。相邻路由器周期性交换距离信息，课件给出常见周期30秒、约180秒未收到更新则视邻居失效；具体行为与实现和计时器有关。路由器比较“邻居报告的距离+到邻居的代价”，更新距离及下一跳。RIP采用UDP报文交换，跳数限制使其不适合很大的网络。
